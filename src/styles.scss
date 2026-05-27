@@ -1,1 +1,388 @@
-/* You can add global styles to this file, and also import other style files */
+@use '@angular/material' as mat;
+
+html {
+  @include mat.theme((
+    color: (
+      primary: mat.$violet-palette,
+      tertiary: mat.$cyan-palette,
+    ),
+    typography: Inter,
+    density: -1,
+  ));
+}
+
+:root {
+  /* ── Spacing scale ───────────────────────────── */
+  --s-1: 0.25rem;
+  --s-2: 0.5rem;
+  --s-3: 0.75rem;
+  --s-4: 1rem;
+  --s-5: 1.5rem;
+  --s-6: 2rem;
+  --s-7: 3rem;
+
+  /* ── Radii (tighter, modern SaaS) ────────────── */
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-xl: 16px;
+
+  /* ── Shadows (subtle — borders do the work) ──── */
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow-md: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
+  --shadow-lg: 0 4px 12px -2px rgba(16, 24, 40, 0.10), 0 2px 6px -2px rgba(16, 24, 40, 0.06);
+  --ring: 0 0 0 3px rgba(91, 91, 214, 0.18);
+
+  /* ── Neutrals (cool zinc) ────────────────────── */
+  --c-bg: #f7f8fa;
+  --c-surface: #ffffff;
+  --c-surface-2: #f4f5f7;
+  --c-border: #ececf0;
+  --c-border-strong: #dcdce3;
+  --c-text: #18181b;
+  --c-text-muted: #6b7280;
+  --c-text-soft: #9aa0aa;
+
+  /* ── Accent (refined indigo-violet) ──────────── */
+  --c-primary: #5b5bd6;
+  --c-primary-hover: #4f4fc4;
+  --c-primary-soft: #eeeefb;
+  --c-primary-strong: #3b3aa6;
+
+  /* ── Semantic ────────────────────────────────── */
+  --c-success: #0e9f6e;
+  --c-success-soft: #d9f5e8;
+  --c-warning: #d97706;
+  --c-warning-soft: #fdf0d5;
+  --c-danger: #e5484d;
+  --c-danger-soft: #fde8e8;
+  --c-info: #0ea5e9;
+  --c-info-soft: #ddf2fd;
+
+  /* ── Gradients (used sparingly: logo / avatar) ─ */
+  --grad-primary: linear-gradient(135deg, #6d5ef0 0%, #5b5bd6 100%);
+  --grad-success: linear-gradient(135deg, #0e9f6e 0%, #15c08a 100%);
+  --grad-warning: linear-gradient(135deg, #d97706 0%, #f59e0b 100%);
+  --grad-danger:  linear-gradient(135deg, #dc2626 0%, #e5484d 100%);
+  --grad-info:    linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%);
+
+  /* ── Recolor Material system tokens to our accent ─ */
+  --mat-sys-primary: #5b5bd6;
+  --mat-sys-on-primary: #ffffff;
+  --mat-sys-primary-container: #eeeefb;
+  --mat-sys-on-primary-container: #2e2a78;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-feature-settings: 'cv11', 'ss01';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color-scheme: light;
+}
+
+/* Material Symbols Rounded — fonte de ícones atual e completa do Google.
+   A legada "Material Icons Round" (v109) não tinha ícones novos (inventory_2,
+   space_dashboard, tag, badge, psychology, insights, bolt...) e renderizava tofu. */
+.material-icons,
+.mat-icon {
+  font-family: 'Material Symbols Rounded' !important;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  font-feature-settings: 'liga';
+}
+
+/* ── Typography ──────────────────────────────── */
+h1, h2, h3, h4 {
+  margin: 0;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--c-text);
+}
+
+h1 { font-size: 1.5rem; line-height: 1.2; }
+h2 { font-size: 1.25rem; line-height: 1.3; }
+h3 { font-size: 1.0625rem; line-height: 1.4; }
+
+.tnum { font-variant-numeric: tabular-nums; }
+
+/* ── Page scaffold ───────────────────────────── */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+  max-width: 1320px;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  flex-wrap: wrap;
+}
+
+.page-header .titulo {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.page-header h1 {
+  margin: 0;
+}
+
+.page-header .subtitulo {
+  color: var(--c-text-muted);
+  font-size: 0.875rem;
+  margin-top: 3px;
+}
+
+/* ── Cards ───────────────────────────────────── */
+.mat-mdc-card {
+  border-radius: var(--r-lg) !important;
+  box-shadow: var(--shadow-sm) !important;
+  background: var(--c-surface) !important;
+  border: 1px solid var(--c-border);
+}
+
+.mat-mdc-card-header {
+  padding: var(--s-5) var(--s-5) 0 !important;
+}
+
+.mat-mdc-card-content {
+  padding: var(--s-5) !important;
+}
+
+.mat-mdc-card-title {
+  font-size: 1.0625rem !important;
+  font-weight: 650 !important;
+  letter-spacing: -0.015em;
+}
+
+.mat-mdc-card-subtitle {
+  color: var(--c-text-muted) !important;
+  margin-top: var(--s-1) !important;
+  font-size: 0.85rem !important;
+}
+
+/* ── Tables ──────────────────────────────────── */
+.mat-mdc-table {
+  background: transparent !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.mat-mdc-header-row {
+  background: var(--c-surface-2);
+}
+
+.mat-mdc-header-cell {
+  font-weight: 600 !important;
+  color: var(--c-text-muted) !important;
+  text-transform: uppercase;
+  font-size: 0.68rem !important;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid var(--c-border) !important;
+}
+
+.mat-mdc-cell {
+  color: var(--c-text) !important;
+  font-size: 0.875rem !important;
+  border-bottom: 1px solid var(--c-border) !important;
+}
+
+.mat-mdc-row {
+  transition: background 0.12s ease;
+}
+
+.mat-mdc-row:hover {
+  background: var(--c-surface-2);
+}
+
+.mat-mdc-row:last-child .mat-mdc-cell {
+  border-bottom: none !important;
+}
+
+.mat-mdc-paginator {
+  background: transparent !important;
+  color: var(--c-text-muted) !important;
+}
+
+/* ── Buttons ─────────────────────────────────── */
+.mat-mdc-button, .mat-mdc-raised-button, .mat-mdc-unelevated-button, .mat-mdc-outlined-button {
+  border-radius: var(--r-md) !important;
+  font-weight: 550 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+.mat-mdc-outlined-button:not(:disabled) {
+  border-color: var(--c-border-strong) !important;
+}
+
+/* ── Form fields (caixas suaves arredondadas, igual ao login) ───── */
+.mat-mdc-form-field {
+  width: 100%;
+  --field-bg: #f5f7fc;
+  --field-bg-focus: #ffffff;
+  --mdc-outlined-text-field-container-shape: 12px;
+  --mdc-outlined-text-field-outline-color: #e4e8f1;
+  --mdc-outlined-text-field-hover-outline-color: var(--c-text-soft);
+  --mdc-outlined-text-field-focus-outline-color: var(--c-primary);
+  --mdc-outlined-text-field-label-text-color: var(--c-text-muted);
+  --mdc-outlined-text-field-hover-label-text-color: var(--c-text-muted);
+  --mdc-outlined-text-field-focus-label-text-color: var(--c-primary);
+  --mdc-outlined-text-field-input-text-color: var(--c-text);
+  --mdc-outlined-text-field-input-text-placeholder-color: var(--c-text-soft);
+  --mdc-outlined-text-field-caret-color: var(--c-primary);
+  --mdc-outlined-text-field-error-outline-color: var(--c-danger);
+  --mdc-outlined-text-field-error-focus-outline-color: var(--c-danger);
+  --mdc-outlined-text-field-error-label-text-color: var(--c-danger);
+  --mdc-outlined-text-field-error-caret-color: var(--c-danger);
+}
+
+/* Caixa limpa (igual ao login): esconde o "notched outline" do Material e
+   usa uma borda própria no wrapper — fundo suave que clareia + anel no foco. */
+.mat-mdc-form-field .mdc-notched-outline__leading,
+.mat-mdc-form-field .mdc-notched-outline__notch,
+.mat-mdc-form-field .mdc-notched-outline__trailing {
+  border: none !important;
+}
+
+.mat-mdc-form-field .mat-mdc-text-field-wrapper {
+  background: var(--field-bg, var(--c-surface));
+  border: 1.5px solid var(--field-border, #e4e8f1);
+  border-radius: 12px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.mat-mdc-form-field.mat-focused .mat-mdc-text-field-wrapper {
+  background: var(--field-bg-focus, #fff);
+  border-color: var(--c-primary);
+  box-shadow: var(--ring);
+}
+
+.mat-mdc-form-field.mat-form-field-invalid .mat-mdc-text-field-wrapper {
+  border-color: var(--c-danger) !important;
+}
+
+/* Rótulo flutuante: quando sobe, fica num "recorte" branco sobre a borda */
+.mat-mdc-form-field .mdc-floating-label--float-above {
+  background: var(--field-label-bg, #fff);
+  padding: 0 6px;
+  border-radius: 4px;
+}
+
+/* Muted prefix / suffix icons */
+.mat-mdc-form-field-icon-prefix,
+.mat-mdc-form-field-icon-suffix {
+  color: var(--c-text-soft);
+}
+
+.mat-mdc-form-field-icon-prefix > mat-icon,
+.mat-mdc-form-field-icon-suffix > mat-icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+}
+
+.mat-mdc-form-field-error {
+  color: var(--c-danger) !important;
+  font-size: 0.78rem;
+}
+
+/* Select trigger + dropdown panel */
+.mat-mdc-select-value { color: var(--c-text) !important; }
+.mat-mdc-select-placeholder { color: var(--c-text-soft) !important; }
+.mat-mdc-select-arrow { color: var(--c-text-soft) !important; }
+
+.mat-mdc-select-panel {
+  border-radius: var(--r-md) !important;
+  border: 1px solid var(--c-border);
+  box-shadow: var(--shadow-lg) !important;
+}
+
+/* ── Chips (pill, refined) ───────────────────── */
+.mat-mdc-chip {
+  border-radius: var(--r-sm) !important;
+  font-weight: 600 !important;
+  font-size: 0.72rem !important;
+  height: 22px !important;
+  padding: 0 var(--s-2) !important;
+  letter-spacing: 0.01em;
+}
+
+/* ── Status chip helpers (shared across pages) ─ */
+.chip-ok      { background: var(--c-success-soft) !important; color: var(--c-success) !important; }
+.chip-muted   { background: var(--c-surface-2) !important;    color: var(--c-text-muted) !important; }
+.chip-accent  { background: var(--c-primary-soft) !important; color: var(--c-primary-strong) !important; }
+.chip-danger  { background: var(--c-danger-soft) !important;  color: var(--c-danger) !important; }
+
+/* ── Empty state ─────────────────────────────── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s-7) var(--s-4);
+  text-align: center;
+  color: var(--c-text-muted);
+}
+
+.empty-state .icon-circle {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--c-surface-2);
+  display: grid;
+  place-items: center;
+  margin-bottom: var(--s-4);
+}
+
+.empty-state .icon {
+  font-size: 28px;
+  width: 28px;
+  height: 28px;
+  color: var(--c-text-soft);
+}
+
+.empty-state .titulo {
+  font-size: 0.9375rem;
+  font-weight: 650;
+  color: var(--c-text);
+  margin-bottom: var(--s-1);
+}
+
+.empty-state .descricao {
+  font-size: 0.85rem;
+  max-width: 360px;
+  line-height: 1.5;
+}
+
+/* ── Scrollbar ───────────────────────────────── */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d4d4dc; border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: #b8b8c2; background-clip: padding-box; }
+
+/* ── Snackbar ────────────────────────────────── */
+.mat-mdc-snack-bar-container {
+  --mdc-snackbar-container-shape: var(--r-md);
+}
+
+/* ── Focus ring on keyboard nav ──────────────── */
+a:focus-visible,
+button:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
