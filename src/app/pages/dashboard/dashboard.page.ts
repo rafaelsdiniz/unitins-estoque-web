@@ -6,6 +6,21 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTableModule } from '@angular/material/table';
+import {
+  ApexAxisChartSeries,
+  ApexChart,
+  ApexDataLabels,
+  ApexFill,
+  ApexGrid,
+  ApexLegend,
+  ApexNonAxisChartSeries,
+  ApexPlotOptions,
+  ApexStroke,
+  ApexTooltip,
+  ApexXAxis,
+  ApexYAxis,
+  NgApexchartsModule,
+} from 'ng-apexcharts';
 import { forkJoin } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
 import { Produto } from '../../models/produto.model';
@@ -14,6 +29,9 @@ import { PrevisaoService } from '../../services/previsao.service';
 import { ProdutoService } from '../../services/produto.service';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
+
+const FONT = 'Plus Jakarta Sans, system-ui, sans-serif';
+const PALETTE = ['#1d3f8f', '#2a52b0', '#3f6fd1', '#f5a623', '#0e9f6e', '#0ea5e9', '#7c5cf0'];
 
 @Component({
   selector: 'app-dashboard',
@@ -27,6 +45,7 @@ import { PageHeaderComponent } from '../../shared/page-header/page-header.compon
     MatChipsModule,
     MatTableModule,
     MatProgressSpinnerModule,
+    NgApexchartsModule,
     PageHeaderComponent,
     EmptyStateComponent,
   ],
@@ -44,30 +63,38 @@ import { PageHeaderComponent } from '../../shared/page-header/page-header.compon
       } @else {
         <!-- KPIs -->
         <div class="kpis">
-          <div class="kpi">
-            <div class="kpi-icon kpi-icon--primary"><mat-icon>inventory_2</mat-icon></div>
-            <div class="kpi-value tnum">{{ totalAtivos() }}</div>
+          <div class="kpi kpi--primary">
+            <div class="kpi-top">
+              <div class="kpi-icon"><mat-icon>inventory_2</mat-icon></div>
+              <div class="kpi-value tnum">{{ totalAtivos() }}</div>
+            </div>
             <div class="kpi-label">Produtos ativos</div>
             <div class="kpi-sub">no catálogo</div>
           </div>
 
-          <div class="kpi">
-            <div class="kpi-icon kpi-icon--success"><mat-icon>payments</mat-icon></div>
-            <div class="kpi-value tnum">{{ stockValue() | currency: 'BRL' : 'symbol' : '1.0-0' }}</div>
+          <div class="kpi kpi--success">
+            <div class="kpi-top">
+              <div class="kpi-icon"><mat-icon>payments</mat-icon></div>
+              <div class="kpi-value tnum">{{ stockValue() | currency: 'BRL' : 'symbol' : '1.0-0' }}</div>
+            </div>
             <div class="kpi-label">Valor em estoque</div>
             <div class="kpi-sub">preço × quantidade</div>
           </div>
 
-          <div class="kpi">
-            <div class="kpi-icon kpi-icon--warning"><mat-icon>warning</mat-icon></div>
-            <div class="kpi-value tnum">{{ baixoCount() }}</div>
+          <div class="kpi kpi--warning">
+            <div class="kpi-top">
+              <div class="kpi-icon"><mat-icon>warning</mat-icon></div>
+              <div class="kpi-value tnum">{{ baixoCount() }}</div>
+            </div>
             <div class="kpi-label">Baixo estoque</div>
             <div class="kpi-sub">abaixo do mínimo</div>
           </div>
 
-          <div class="kpi">
-            <div class="kpi-icon kpi-icon--info"><mat-icon>auto_awesome</mat-icon></div>
-            <div class="kpi-value tnum">{{ sugestoes().length }}</div>
+          <div class="kpi kpi--info">
+            <div class="kpi-top">
+              <div class="kpi-icon"><mat-icon>auto_awesome</mat-icon></div>
+              <div class="kpi-value tnum">{{ sugestoes().length }}</div>
+            </div>
             <div class="kpi-label">Reposição sugerida</div>
             <div class="kpi-sub">recomendados pela IA</div>
           </div>
@@ -81,46 +108,29 @@ import { PageHeaderComponent } from '../../shared/page-header/page-header.compon
               <mat-card-subtitle>Distribuição dos produtos ativos</mat-card-subtitle>
             </mat-card-header>
             <mat-card-content>
-              <div class="donut-wrap">
-                <div class="donut">
-                  <svg viewBox="0 0 120 120">
-                    <circle class="donut-track" cx="60" cy="60" r="48" pathLength="100" />
-                    <circle
-                      class="donut-seg s-green"
-                      cx="60" cy="60" r="48" pathLength="100"
-                      [attr.stroke-dasharray]="pctSaud() + ' 100'"
-                    />
-                    <circle
-                      class="donut-seg s-amber"
-                      cx="60" cy="60" r="48" pathLength="100"
-                      [attr.stroke-dasharray]="pctBaixo() + ' 100'"
-                      [attr.stroke-dashoffset]="-pctSaud()"
-                    />
-                  </svg>
-                  <div class="donut-center">
-                    <div class="donut-pct tnum">{{ pctSaud() }}%</div>
-                    <div class="donut-lbl">saudável</div>
-                  </div>
+              @if (totalAtivos() === 0) {
+                <app-empty-state
+                  icon="monitoring"
+                  title="Sem dados"
+                  description="Cadastre produtos ativos para ver a saúde do estoque."
+                ></app-empty-state>
+              } @else {
+                <apx-chart
+                  [series]="healthChart().series"
+                  [chart]="healthChart().chart"
+                  [labels]="healthChart().labels"
+                  [colors]="healthChart().colors"
+                  [plotOptions]="healthChart().plotOptions"
+                  [dataLabels]="healthChart().dataLabels"
+                  [legend]="healthChart().legend"
+                  [stroke]="healthChart().stroke"
+                  [tooltip]="healthChart().tooltip"
+                ></apx-chart>
+                <div class="chart-foot">
+                  <mat-icon>trending_down</mat-icon>
+                  {{ totalSaidas() | number: '1.0-0' }} saídas nos últimos 30 dias
                 </div>
-                <div class="legend">
-                  <div class="legend-item">
-                    <span class="dot d-green"></span> Saudável
-                    <strong class="tnum">{{ saudaveis() }}</strong>
-                  </div>
-                  <div class="legend-item">
-                    <span class="dot d-amber"></span> Baixo estoque
-                    <strong class="tnum">{{ baixoCount() }}</strong>
-                  </div>
-                  <div class="legend-item legend-total">
-                    <span class="dot d-soft"></span> Total ativos
-                    <strong class="tnum">{{ totalAtivos() }}</strong>
-                  </div>
-                  <div class="legend-foot">
-                    <mat-icon>trending_down</mat-icon>
-                    {{ totalSaidas() | number: '1.0-0' }} saídas nos últimos 30 dias
-                  </div>
-                </div>
-              </div>
+              }
             </mat-card-content>
           </mat-card>
 
@@ -137,23 +147,52 @@ import { PageHeaderComponent } from '../../shared/page-header/page-header.compon
                   description="Cadastre produtos com categorias para ver a distribuição."
                 ></app-empty-state>
               } @else {
-                <div class="bars">
-                  @for (c of categorias(); track c.nome) {
-                    <div class="bar-row">
-                      <div class="bar-head">
-                        <span class="bar-name">{{ c.nome }}</span>
-                        <span class="bar-val tnum">{{ c.count }}</span>
-                      </div>
-                      <div class="bar-track">
-                        <div class="bar-fill" [style.width.%]="c.pct"></div>
-                      </div>
-                    </div>
-                  }
-                </div>
+                <apx-chart
+                  [series]="catChart().series"
+                  [chart]="catChart().chart"
+                  [colors]="catChart().colors"
+                  [plotOptions]="catChart().plotOptions"
+                  [dataLabels]="catChart().dataLabels"
+                  [xaxis]="catChart().xaxis"
+                  [yaxis]="catChart().yaxis"
+                  [grid]="catChart().grid"
+                  [legend]="catChart().legend"
+                  [tooltip]="catChart().tooltip"
+                ></apx-chart>
               }
             </mat-card-content>
           </mat-card>
         </div>
+
+        <!-- Top produtos por valor -->
+        <mat-card class="bloco">
+          <mat-card-header>
+            <mat-card-title><mat-icon class="bloco-icon">paid</mat-icon> Top produtos por valor em estoque</mat-card-title>
+            <mat-card-subtitle>Maior capital imobilizado (preço × quantidade)</mat-card-subtitle>
+          </mat-card-header>
+          <mat-card-content>
+            @if (topValor().length === 0) {
+              <app-empty-state
+                icon="paid"
+                title="Sem dados"
+                description="Cadastre produtos com preço e quantidade para ver o ranking."
+              ></app-empty-state>
+            } @else {
+              <apx-chart
+                [series]="valorChart().series"
+                [chart]="valorChart().chart"
+                [colors]="valorChart().colors"
+                [fill]="valorChart().fill"
+                [plotOptions]="valorChart().plotOptions"
+                [dataLabels]="valorChart().dataLabels"
+                [xaxis]="valorChart().xaxis"
+                [yaxis]="valorChart().yaxis"
+                [grid]="valorChart().grid"
+                [tooltip]="valorChart().tooltip"
+              ></apx-chart>
+            }
+          </mat-card-content>
+        </mat-card>
 
         <!-- Sugestões IA -->
         <mat-card class="bloco">
@@ -266,6 +305,7 @@ import { PageHeaderComponent } from '../../shared/page-header/page-header.compon
     }
 
     .kpi {
+      position: relative;
       display: flex;
       flex-direction: column;
       padding: 1.25rem;
@@ -273,35 +313,48 @@ import { PageHeaderComponent } from '../../shared/page-header/page-header.compon
       background: var(--c-surface);
       border: 1px solid var(--c-border);
       box-shadow: var(--shadow-sm);
-      transition: box-shadow 0.15s ease, border-color 0.15s ease;
+      overflow: hidden;
+      transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
     }
+    /* faixa de acento no topo (cara de cartão BI) */
+    .kpi::before {
+      content: '';
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 3px;
+      background: var(--accent, var(--c-primary));
+    }
+    .kpi:hover { box-shadow: var(--shadow-md); border-color: var(--c-border-strong); transform: translateY(-2px); }
 
-    .kpi:hover { box-shadow: var(--shadow-md); border-color: var(--c-border-strong); }
+    .kpi--primary { --accent: var(--c-primary); --accent-soft: var(--c-primary-soft); }
+    .kpi--success { --accent: var(--c-success); --accent-soft: var(--c-success-soft); }
+    .kpi--warning { --accent: var(--c-warning); --accent-soft: var(--c-warning-soft); }
+    .kpi--info    { --accent: var(--c-info);    --accent-soft: var(--c-info-soft); }
+
+    .kpi-top { display: flex; align-items: center; gap: 0.875rem; }
 
     .kpi-icon {
-      width: 38px;
-      height: 38px;
+      width: 42px;
+      height: 42px;
       border-radius: var(--r-md);
       display: grid;
       place-items: center;
-      margin-bottom: 0.875rem;
+      flex-shrink: 0;
+      background: var(--accent-soft);
+      color: var(--accent);
     }
-
-    .kpi-icon mat-icon { font-size: 21px; width: 21px; height: 21px; }
-    .kpi-icon--primary { background: var(--c-primary-soft); color: var(--c-primary); }
-    .kpi-icon--success { background: var(--c-success-soft); color: var(--c-success); }
-    .kpi-icon--warning { background: var(--c-warning-soft); color: var(--c-warning); }
-    .kpi-icon--info    { background: var(--c-info-soft);    color: var(--c-info); }
+    .kpi-icon mat-icon { font-size: 22px; width: 22px; height: 22px; }
 
     .kpi-value {
-      font-size: 1.875rem;
+      font-family: var(--font-brand);
+      font-size: 1.75rem;
       font-weight: 700;
       line-height: 1.05;
       letter-spacing: -0.03em;
       color: var(--c-text);
     }
 
-    .kpi-label { font-size: 0.875rem; font-weight: 600; color: var(--c-text); margin-top: 0.5rem; }
+    .kpi-label { font-size: 0.875rem; font-weight: 600; color: var(--c-text); margin-top: 0.875rem; }
     .kpi-sub { font-size: 0.78rem; color: var(--c-text-muted); margin-top: 2px; }
 
     /* ── Charts row ──────────────────────────── */
@@ -316,66 +369,17 @@ import { PageHeaderComponent } from '../../shared/page-header/page-header.compon
     .bloco-icon { vertical-align: middle; margin-right: 0.4rem; color: var(--c-primary); }
     .mat-mdc-card-title { display: flex; align-items: center; }
 
-    /* Donut */
-    .donut-wrap {
-      display: flex;
-      align-items: center;
-      gap: 2rem;
-      flex-wrap: wrap;
-      padding: 0.5rem 0;
-    }
-
-    .donut { position: relative; width: 168px; height: 168px; flex-shrink: 0; }
-    .donut svg { width: 100%; height: 100%; transform: rotate(-90deg); }
-    .donut-track { fill: none; stroke: var(--c-surface-2); stroke-width: 13; }
-    .donut-seg { fill: none; stroke-width: 13; stroke-linecap: butt; transition: stroke-dasharray 0.7s ease; }
-    .s-green { stroke: var(--c-success); }
-    .s-amber { stroke: var(--c-warning); }
-
-    .donut-center {
-      position: absolute;
-      inset: 0;
-      display: grid;
-      place-items: center;
-      text-align: center;
-      line-height: 1;
-    }
-    .donut-pct { font-size: 1.875rem; font-weight: 700; letter-spacing: -0.03em; color: var(--c-text); }
-    .donut-lbl { font-size: 0.78rem; color: var(--c-text-muted); margin-top: 4px; }
-
-    .legend { display: flex; flex-direction: column; gap: 0.875rem; flex: 1; min-width: 180px; }
-    .legend-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: var(--c-text-muted); }
-    .legend-item strong { margin-left: auto; color: var(--c-text); font-weight: 700; }
-    .dot { width: 11px; height: 11px; border-radius: 4px; flex-shrink: 0; }
-    .d-green { background: var(--c-success); }
-    .d-amber { background: var(--c-warning); }
-    .d-soft  { background: var(--c-border-strong); }
-
-    .legend-foot {
+    .chart-foot {
       display: flex;
       align-items: center;
       gap: 0.4rem;
-      margin-top: 0.25rem;
+      margin-top: 0.5rem;
       padding-top: 0.875rem;
       border-top: 1px solid var(--c-border);
       font-size: 0.8rem;
       color: var(--c-text-muted);
     }
-    .legend-foot mat-icon { font-size: 17px; width: 17px; height: 17px; color: var(--c-text-soft); }
-
-    /* Barras */
-    .bars { display: flex; flex-direction: column; gap: 1rem; padding: 0.25rem 0; }
-    .bar-head { display: flex; justify-content: space-between; margin-bottom: 0.375rem; }
-    .bar-name { font-size: 0.875rem; font-weight: 550; color: var(--c-text); }
-    .bar-val { font-size: 0.85rem; color: var(--c-text-muted); font-weight: 600; }
-    .bar-track { height: 9px; background: var(--c-surface-2); border-radius: 999px; overflow: hidden; }
-    .bar-fill {
-      height: 100%;
-      background: var(--grad-primary);
-      border-radius: 999px;
-      transition: width 0.7s ease;
-      min-width: 6px;
-    }
+    .chart-foot mat-icon { font-size: 17px; width: 17px; height: 17px; color: var(--c-text-soft); }
 
     /* ── Tabelas ─────────────────────────────── */
     .tabela { width: 100%; }
@@ -409,6 +413,18 @@ export class DashboardPage {
   private previsaoService = inject(PrevisaoService);
   private produtoService = inject(ProdutoService);
 
+  private readonly brl = new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    maximumFractionDigits: 0,
+  });
+  private readonly brlCompact = new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  });
+
   readonly loading = signal(true);
   readonly sugestoes = signal<Previsao[]>([]);
   readonly baixoEstoque = signal<Produto[]>([]);
@@ -427,7 +443,6 @@ export class DashboardPage {
     const t = this.totalAtivos();
     return t ? Math.round((this.saudaveis() / t) * 100) : 100;
   });
-  readonly pctBaixo = computed(() => 100 - this.pctSaud());
   readonly totalSaidas = computed(() =>
     this.sugestoes().reduce((acc, s) => acc + (s.saidasNaJanela ?? 0), 0),
   );
@@ -441,9 +456,165 @@ export class DashboardPage {
     }
     const arr = [...map.entries()].map(([nome, count]) => ({ nome, count }));
     arr.sort((a, b) => b.count - a.count);
-    const top = arr.slice(0, 6);
-    const max = Math.max(1, ...top.map((c) => c.count));
-    return top.map((c) => ({ ...c, pct: Math.round((c.count / max) * 100) }));
+    return arr.slice(0, 6);
+  });
+
+  readonly topValor = computed(() =>
+    this.produtos()
+      .filter((p) => p.ativo)
+      .map((p) => ({ nome: p.nome, valor: (p.precoUnitario ?? 0) * (p.quantidade ?? 0) }))
+      .filter((p) => p.valor > 0)
+      .sort((a, b) => b.valor - a.valor)
+      .slice(0, 8),
+  );
+
+  // ── Gráfico: Saúde do estoque (donut) ──────────────────────────
+  readonly healthChart = computed(() => {
+    const total = this.totalAtivos();
+    return {
+      series: [this.saudaveis(), this.baixoCount()] as ApexNonAxisChartSeries,
+      chart: {
+        type: 'donut',
+        height: 280,
+        fontFamily: FONT,
+        animations: { speed: 500 },
+      } as ApexChart,
+      labels: ['Saudável', 'Baixo estoque'],
+      colors: ['#0e9f6e', '#f5a623'],
+      stroke: { width: 0 } as ApexStroke,
+      dataLabels: { enabled: false } as ApexDataLabels,
+      legend: {
+        position: 'bottom',
+        fontFamily: FONT,
+        fontSize: '13px',
+        markers: { size: 6 },
+        itemMargin: { horizontal: 10 },
+      } as ApexLegend,
+      plotOptions: {
+        pie: {
+          donut: {
+            size: '72%',
+            labels: {
+              show: true,
+              name: { fontFamily: FONT, fontSize: '13px', color: '#6b7280' },
+              value: {
+                fontFamily: FONT,
+                fontSize: '28px',
+                fontWeight: 700,
+                color: '#18181b',
+                offsetY: 4,
+              },
+              total: {
+                show: true,
+                label: 'Total ativos',
+                fontFamily: FONT,
+                fontSize: '13px',
+                color: '#6b7280',
+                formatter: () => String(total),
+              },
+            },
+          },
+        },
+      } as ApexPlotOptions,
+      tooltip: { enabled: true, fillSeriesColor: false } as ApexTooltip,
+    };
+  });
+
+  // ── Gráfico: Produtos por categoria (barras horizontais) ───────
+  readonly catChart = computed(() => {
+    const cats = this.categorias();
+    return {
+      series: [{ name: 'Produtos', data: cats.map((c) => c.count) }] as ApexAxisChartSeries,
+      chart: {
+        type: 'bar',
+        height: 300,
+        fontFamily: FONT,
+        toolbar: { show: false },
+        animations: { speed: 500 },
+      } as ApexChart,
+      colors: PALETTE,
+      plotOptions: {
+        bar: {
+          horizontal: true,
+          borderRadius: 6,
+          borderRadiusApplication: 'end',
+          distributed: true,
+          barHeight: '62%',
+        },
+      } as ApexPlotOptions,
+      dataLabels: {
+        enabled: true,
+        style: { fontFamily: FONT, fontWeight: 700, colors: ['#fff'] },
+        offsetX: -4,
+      } as ApexDataLabels,
+      xaxis: {
+        categories: cats.map((c) => c.nome),
+        labels: { style: { fontFamily: FONT, colors: '#9aa0aa' } },
+        axisBorder: { show: false },
+        axisTicks: { show: false },
+      } as ApexXAxis,
+      yaxis: {
+        labels: { style: { fontFamily: FONT, colors: '#6b7280', fontSize: '13px' } },
+      } as ApexYAxis,
+      grid: { borderColor: '#ececf0', strokeDashArray: 4, padding: { left: 4 } } as ApexGrid,
+      legend: { show: false } as ApexLegend,
+      tooltip: { enabled: true, y: { title: { formatter: () => 'Produtos:' } } } as ApexTooltip,
+    };
+  });
+
+  // ── Gráfico: Top produtos por valor (colunas com gradiente) ────
+  readonly valorChart = computed(() => {
+    const tops = this.topValor();
+    const fmt = this.brl;
+    const fmtC = this.brlCompact;
+    return {
+      series: [{ name: 'Valor em estoque', data: tops.map((t) => Math.round(t.valor)) }] as ApexAxisChartSeries,
+      chart: {
+        type: 'bar',
+        height: 320,
+        fontFamily: FONT,
+        toolbar: { show: false },
+        animations: { speed: 500 },
+      } as ApexChart,
+      colors: ['#1d3f8f'],
+      fill: {
+        type: 'gradient',
+        gradient: {
+          shade: 'light',
+          type: 'vertical',
+          gradientToColors: ['#3f6fd1'],
+          stops: [0, 100],
+          opacityFrom: 1,
+          opacityTo: 0.85,
+        },
+      } as ApexFill,
+      plotOptions: {
+        bar: { horizontal: false, borderRadius: 6, borderRadiusApplication: 'end', columnWidth: '52%' },
+      } as ApexPlotOptions,
+      dataLabels: { enabled: false } as ApexDataLabels,
+      xaxis: {
+        categories: tops.map((t) => t.nome),
+        labels: {
+          style: { fontFamily: FONT, colors: '#6b7280', fontSize: '12px' },
+          rotate: -25,
+          trim: true,
+          hideOverlappingLabels: true,
+        },
+        axisBorder: { show: false },
+        axisTicks: { show: false },
+      } as ApexXAxis,
+      yaxis: {
+        labels: {
+          style: { fontFamily: FONT, colors: '#9aa0aa' },
+          formatter: (v: number) => fmtC.format(v),
+        },
+      } as ApexYAxis,
+      grid: { borderColor: '#ececf0', strokeDashArray: 4 } as ApexGrid,
+      tooltip: {
+        enabled: true,
+        y: { formatter: (v: number) => fmt.format(v) },
+      } as ApexTooltip,
+    };
   });
 
   constructor() {
