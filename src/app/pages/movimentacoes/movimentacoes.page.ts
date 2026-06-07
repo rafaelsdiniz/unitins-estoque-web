@@ -1,6 +1,6 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCardModule } from '@angular/material/card';
@@ -15,6 +15,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { Movimentacao, TipoMovimentacao } from '../../models/movimentacao.model';
 import { Produto } from '../../models/produto.model';
+import { IaService } from '../../services/ia.service';
 import { MovimentacaoService } from '../../services/movimentacao.service';
 import { ProdutoService } from '../../services/produto.service';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
@@ -56,6 +57,33 @@ import { PageHeaderComponent } from '../../shared/page-header/page-header.compon
             <mat-card-title>Registrar movimentação</mat-card-title>
           </mat-card-header>
           <mat-card-content>
+            <div class="nl">
+              <mat-form-field appearance="outline" class="nl-field">
+                <mat-label>Lançar por texto (IA)</mat-label>
+                <input
+                  matInput
+                  [formControl]="nlInput"
+                  placeholder="ex.: saída de 10 unidades de Mouse"
+                  (keydown.enter)="$event.preventDefault(); interpretarNl()"
+                />
+                <mat-icon matSuffix>auto_awesome</mat-icon>
+              </mat-form-field>
+              <button
+                mat-stroked-button
+                type="button"
+                (click)="interpretarNl()"
+                [disabled]="nlCarregando() || !nlInput.value.trim()"
+              >
+                {{ nlCarregando() ? 'Interpretando…' : 'Interpretar' }}
+              </button>
+            </div>
+            @if (nlMensagem()) {
+              <div class="nl-msg" [class.nl-ok]="nlOk()">
+                <mat-icon>{{ nlOk() ? 'check_circle' : 'info' }}</mat-icon>
+                <span>{{ nlMensagem() }}</span>
+              </div>
+            }
+
             <form [formGroup]="form" (ngSubmit)="submit()">
               <mat-form-field appearance="outline">
                 <mat-label>Produto</mat-label>
@@ -182,6 +210,17 @@ import { PageHeaderComponent } from '../../shared/page-header/page-header.compon
     }
     form { display: flex; flex-direction: column; gap: 0.5rem; }
     mat-form-field { width: 100%; }
+    .nl { display: flex; gap: 0.5rem; align-items: flex-start; }
+    .nl-field { flex: 1; }
+    .nl button { margin-top: 0.4rem; white-space: nowrap; }
+    .nl-msg {
+      display: flex; align-items: center; gap: 0.45rem;
+      margin: 0 0 0.75rem; padding: 0.5rem 0.7rem;
+      background: var(--c-surface-2); border: 1px solid var(--c-border);
+      border-radius: var(--r-sm); font-size: 0.82rem; color: var(--c-text-muted);
+    }
+    .nl-msg.nl-ok { background: var(--c-success-soft); color: var(--c-success); border-color: transparent; }
+    .nl-msg mat-icon { font-size: 17px; width: 17px; height: 17px; }
     .toggle { display: flex; margin-bottom: 0.5rem; }
     .toggle mat-button-toggle { flex: 1; }
     .tabela { width: 100%; }
@@ -194,7 +233,14 @@ export class MovimentacoesPage {
   private fb = inject(FormBuilder);
   private produtoService = inject(ProdutoService);
   private movService = inject(MovimentacaoService);
+  private ia = inject(IaService);
   private snack = inject(MatSnackBar);
+
+  // Lançamento por linguagem natural (IA)
+  readonly nlInput = new FormControl('', { nonNullable: true });
+  readonly nlCarregando = signal(false);
+  readonly nlMensagem = signal<string | null>(null);
+  readonly nlOk = signal(false);
 
   readonly colunas = ['data', 'tipo', 'qtd', 'preco', 'usuario'];
   readonly produtos = signal<Produto[]>([]);
@@ -227,6 +273,36 @@ export class MovimentacoesPage {
         this.pageIndex.set(0);
         this.carregarHistorico();
       }
+    });
+  }
+
+  /**
+   * Interpreta uma frase em movimentação e pré-preenche o formulário.
+   * Nada é gravado: o usuário revisa e clica em "Registrar".
+   */
+  interpretarNl(): void {
+    const texto = this.nlInput.value.trim();
+    if (!texto || this.nlCarregando()) return;
+    this.nlCarregando.set(true);
+    this.nlMensagem.set(null);
+    this.ia.movimentacaoNl(texto).subscribe({
+      next: (r) => {
+        this.nlCarregando.set(false);
+        this.nlOk.set(r.interpretado);
+        this.nlMensagem.set(r.mensagem);
+        if (r.interpretado && r.produtoId) {
+          this.form.patchValue({
+            produtoId: r.produtoId,
+            tipo: r.tipo ?? this.form.controls.tipo.value,
+            quantidade: r.quantidade ?? 1,
+          });
+        }
+      },
+      error: (err) => {
+        this.nlCarregando.set(false);
+        this.nlOk.set(false);
+        this.nlMensagem.set(err.error?.message ?? 'Não consegui interpretar a frase.');
+      },
     });
   }
 

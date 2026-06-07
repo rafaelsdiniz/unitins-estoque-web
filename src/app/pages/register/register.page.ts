@@ -107,7 +107,7 @@ import { AuthService } from '../../core/auth/auth.service';
       color: #fff;
       background:
         radial-gradient(1200px 400px at -10% -20%, rgba(255,255,255,0.16), transparent 60%),
-        linear-gradient(150deg, #4f4fc4 0%, #5b5bd6 45%, #7c5cf0 100%);
+        linear-gradient(150deg, #142c66 0%, #1d3f8f 55%, #2a52b0 100%);
     }
 
     .auth-aside::after {

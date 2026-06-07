@@ -3,10 +3,10 @@
 html {
   @include mat.theme((
     color: (
-      primary: mat.$violet-palette,
-      tertiary: mat.$cyan-palette,
+      primary: mat.$blue-palette,
+      tertiary: mat.$yellow-palette,
     ),
-    typography: Inter,
+    typography: ('Plus Jakarta Sans'),
     density: -1,
   ));
 }
@@ -31,7 +31,7 @@ html {
   --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04);
   --shadow-md: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
   --shadow-lg: 0 4px 12px -2px rgba(16, 24, 40, 0.10), 0 2px 6px -2px rgba(16, 24, 40, 0.06);
-  --ring: 0 0 0 3px rgba(91, 91, 214, 0.18);
+  --ring: 0 0 0 3px rgba(29, 63, 143, 0.20);
 
   /* ── Neutrals (cool zinc) ────────────────────── */
   --c-bg: #f7f8fa;
@@ -43,11 +43,17 @@ html {
   --c-text-muted: #6b7280;
   --c-text-soft: #9aa0aa;
 
-  /* ── Accent (refined indigo-violet) ──────────── */
-  --c-primary: #5b5bd6;
-  --c-primary-hover: #4f4fc4;
-  --c-primary-soft: #eeeefb;
-  --c-primary-strong: #3b3aa6;
+  /* ── Accent (azul royal — identidade UNITINS) ── */
+  --c-primary: #1d3f8f;
+  --c-primary-hover: #18356f;
+  --c-primary-soft: #e9eef8;
+  --c-primary-strong: #142c66;
+
+  /* ── Acento secundário (ouro/âmbar da logo) ──── */
+  --c-gold: #f5a623;
+  --c-gold-hover: #e0950f;
+  --c-gold-soft: #fef3da;
+  --c-gold-strong: #b9790a;
 
   /* ── Semantic ────────────────────────────────── */
   --c-success: #0e9f6e;
@@ -60,17 +66,18 @@ html {
   --c-info-soft: #ddf2fd;
 
   /* ── Gradients (used sparingly: logo / avatar) ─ */
-  --grad-primary: linear-gradient(135deg, #6d5ef0 0%, #5b5bd6 100%);
+  --grad-primary: linear-gradient(135deg, #2a52b0 0%, #1d3f8f 100%);
+  --grad-gold:    linear-gradient(135deg, #f7b733 0%, #f5a623 100%);
   --grad-success: linear-gradient(135deg, #0e9f6e 0%, #15c08a 100%);
   --grad-warning: linear-gradient(135deg, #d97706 0%, #f59e0b 100%);
   --grad-danger:  linear-gradient(135deg, #dc2626 0%, #e5484d 100%);
   --grad-info:    linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%);
 
   /* ── Recolor Material system tokens to our accent ─ */
-  --mat-sys-primary: #5b5bd6;
+  --mat-sys-primary: #1d3f8f;
   --mat-sys-on-primary: #ffffff;
-  --mat-sys-primary-container: #eeeefb;
-  --mat-sys-on-primary-container: #2e2a78;
+  --mat-sys-primary-container: #e9eef8;
+  --mat-sys-on-primary-container: #142c66;
 }
 
 * {
@@ -85,11 +92,15 @@ body {
   margin: 0;
   background: var(--c-bg);
   color: var(--c-text);
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  font-feature-settings: 'cv11', 'ss01';
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color-scheme: light;
+}
+
+/* Marca/títulos: Montserrat, ecoando o wordmark da logo */
+:root {
+  --font-brand: 'Montserrat', 'Plus Jakarta Sans', system-ui, sans-serif;
 }
 
 /* Material Symbols Rounded — fonte de ícones atual e completa do Google.
@@ -105,7 +116,8 @@ body {
 /* ── Typography ──────────────────────────────── */
 h1, h2, h3, h4 {
   margin: 0;
-  font-weight: 650;
+  font-family: var(--font-brand);
+  font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--c-text);
 }
@@ -233,7 +245,7 @@ h3 { font-size: 1.0625rem; line-height: 1.4; }
 /* ── Form fields (caixas suaves arredondadas, igual ao login) ───── */
 .mat-mdc-form-field {
   width: 100%;
-  --field-bg: #f5f7fc;
+  --field-bg: #ffffff;
   --field-bg-focus: #ffffff;
   --mdc-outlined-text-field-container-shape: 12px;
   --mdc-outlined-text-field-outline-color: #e4e8f1;
@@ -261,9 +273,14 @@ h3 { font-size: 1.0625rem; line-height: 1.4; }
 
 .mat-mdc-form-field .mat-mdc-text-field-wrapper {
   background: var(--field-bg, var(--c-surface));
-  border: 1.5px solid var(--field-border, #e4e8f1);
-  border-radius: 12px;
+  border: 1.5px solid var(--field-border, var(--c-border-strong));
+  border-radius: var(--r-lg);
   transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.mat-mdc-form-field:not(.mat-focused):not(.mat-form-field-invalid):hover
+  .mat-mdc-text-field-wrapper {
+  border-color: var(--c-text-soft);
 }
 
 .mat-mdc-form-field.mat-focused .mat-mdc-text-field-wrapper {
@@ -374,6 +391,67 @@ h3 { font-size: 1.0625rem; line-height: 1.4; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #d4d4dc; border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
 ::-webkit-scrollbar-thumb:hover { background: #b8b8c2; background-clip: padding-box; }
+
+/* ── Menu (dropdown da conta e afins) ────────── */
+.mat-mdc-menu-panel {
+  border-radius: var(--r-lg) !important;
+  border: 1px solid var(--c-border);
+  box-shadow: var(--shadow-lg) !important;
+  min-width: 200px !important;
+  background: var(--c-surface);
+}
+
+.mat-mdc-menu-panel .mat-mdc-menu-content {
+  padding: var(--s-1) !important;
+}
+
+.mat-mdc-menu-item {
+  border-radius: var(--r-md) !important;
+  min-height: 40px !important;
+  font-size: 0.875rem !important;
+  font-weight: 550 !important;
+  color: var(--c-text) !important;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.mat-mdc-menu-item .mat-mdc-menu-item-text {
+  font-size: 0.875rem !important;
+  letter-spacing: 0 !important;
+}
+
+.mat-mdc-menu-item .mat-icon {
+  color: var(--c-text-soft) !important;
+  font-size: 20px !important;
+  width: 20px !important;
+  height: 20px !important;
+  margin-right: 2px !important;
+  transition: color 0.12s ease;
+}
+
+.mat-mdc-menu-item:hover:not([disabled]),
+.mat-mdc-menu-item.cdk-keyboard-focused,
+.mat-mdc-menu-item.cdk-program-focused {
+  background: var(--c-surface-2) !important;
+}
+
+.mat-mdc-menu-item:hover:not([disabled]) .mat-icon {
+  color: var(--c-text-muted) !important;
+}
+
+/* Item de logout/destrutivo: marca pela última posição (após o divisor) */
+.mat-mdc-menu-item.danger,
+.mat-mdc-menu-item.danger .mat-icon {
+  color: var(--c-danger) !important;
+}
+.mat-mdc-menu-item.danger:hover:not([disabled]) {
+  background: var(--c-danger-soft) !important;
+}
+
+.mat-mdc-menu-panel .mat-mdc-divider,
+.mat-mdc-menu-panel mat-divider {
+  margin: var(--s-1) 0 !important;
+  border-color: var(--c-border) !important;
+}
 
 /* ── Snackbar ────────────────────────────────── */
 .mat-mdc-snack-bar-container {
