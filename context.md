@@ -87,7 +87,9 @@ src/
 │   │   ├── produto.model.ts
 │   │   ├── movimentacao.model.ts
 │   │   ├── previsao.model.ts
-│   │   ├── ia.model.ts          # ChatMessage, ChatResponse (chat IA)
+│   │   ├── ia.model.ts          # ChatMessage, ChatResponse, AssistenteResponse, MovimentacaoNl
+│   │   ├── analise.model.ts     # ResumoEstoque, CurvaAbcItem, Anomalia
+│   │   ├── previsao.model.ts    # Previsao (v2: EWMA, tendência, quantidadeSugerida, confiança)
 │   │   └── page.model.ts        # Page<T>, ApiError
 │   ├── services/                # 1 service por domínio (chamadas HTTP)
 │   │   ├── usuario.service.ts
@@ -95,12 +97,13 @@ src/
 │   │   ├── produto.service.ts
 │   │   ├── movimentacao.service.ts
 │   │   ├── previsao.service.ts
-│   │   └── ia.service.ts          # POST /ia/chat
+│   │   ├── analise.service.ts     # GET /analise/{resumo,curva-abc,anomalias}
+│   │   └── ia.service.ts          # /ia/{chat,agente,resumo,pedido-compra,movimentacao-nl}
 │   ├── layouts/main-layout/     # shell só com sidebar (sem topbar); usuário no rodapé
 │   ├── pages/
 │   │   ├── login/
 │   │   ├── register/
-│   │   ├── dashboard/           # KPIs com gradiente + previsão IA
+│   │   ├── dashboard/           # KPIs + gráficos + card "Inteligência (IA)" + anomalias
 │   │   ├── categorias/          # list + form (criar/editar)
 │   │   ├── produtos/            # list + form
 │   │   ├── movimentacoes/       # formulário lado a lado com histórico
@@ -124,14 +127,14 @@ src/
 |---|---|---|---|
 | `/login` | guest | `LoginPage` | Autenticação |
 | `/register` | guest | `RegisterPage` | Criação de conta (role USUARIO) |
-| `/dashboard` | auth | `DashboardPage` | KPIs + previsões IA |
+| `/dashboard` | auth | `DashboardPage` | KPIs + gráficos + Inteligência IA (resumo/pedido) + anomalias |
 | `/categorias` | auth | `CategoriasListPage` | Lista paginada |
 | `/categorias/nova` | admin | `CategoriaFormPage` | Criar |
 | `/categorias/:id` | admin | `CategoriaFormPage` | Editar |
 | `/produtos` | auth | `ProdutosListPage` | Lista com busca por nome |
 | `/produtos/novo` | admin | `ProdutoFormPage` | Criar |
 | `/produtos/:id` | admin | `ProdutoFormPage` | Editar |
-| `/movimentacoes` | auth | `MovimentacoesPage` | Formulário + histórico |
+| `/movimentacoes` | auth | `MovimentacoesPage` | Formulário + histórico + lançar por texto (IA) |
 | `/usuarios` | admin | `UsuariosListPage` | Listagem ADMIN |
 | `/perfil` | auth | `PerfilPage` | `/usuarios/me` + troca de senha |
 
@@ -228,7 +231,8 @@ Estado vazio amigável com ícone, título, descrição e CTA opcional.
 Chat de IA **flutuante** (FAB redondo no canto inferior direito) embutido no `MainLayoutComponent`,
 então aparece em todas as telas autenticadas. Abre um painel com histórico de conversa, chips de
 sugestão, indicador de digitação e atalho Enter/Shift+Enter. Estado em signals; histórico só na
-sessão (não persiste). Consome `IaService` → `POST /ia/chat`. Não é uma rota.
+sessão (não persiste). Consome `IaService` → `POST /ia/agente` (o **agente** com ferramentas, que
+consulta produtos/previsão/resumo/curva ABC/anomalias/histórico sob demanda). Não é uma rota.
 
 ### `ConfirmDialogComponent`
 Modal reutilizável aberto via `MatDialog`:
@@ -247,8 +251,9 @@ this.dialog.open(ConfirmDialogComponent, {
 | `CategoriaService` | CRUD em `/categorias` |
 | `ProdutoService` | CRUD em `/produtos` + `/baixo-estoque` |
 | `MovimentacaoService` | `GET /movimentacoes?produtoId=`, `POST /movimentacoes` |
-| `PrevisaoService` | `GET /previsao/produtos/:id`, `/reposicao-sugerida` |
-| `IaService` | `POST /ia/chat` (histórico na sessão; backend stateless) |
+| `PrevisaoService` | `GET /previsao/produtos/:id`, `/reposicao-sugerida` (v2: EWMA, tendência, quantidade sugerida) |
+| `AnaliseService` | `GET /analise/{resumo, curva-abc, anomalias}` |
+| `IaService` | `POST /ia/{chat, agente, movimentacao-nl}`; `GET /ia/{resumo, pedido-compra}` (histórico na sessão; backend stateless) |
 
 Erros do backend chegam no formato `ApiError` (`{timestamp, status, error, message, fieldErrors?}`). Componentes exibem `err.error?.message` via `MatSnackBar` em geral.
 

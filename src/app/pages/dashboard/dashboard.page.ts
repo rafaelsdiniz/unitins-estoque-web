@@ -1,4 +1,4 @@
-import { CurrencyPipe, DecimalPipe } from '@angular/common';
+import { CurrencyPipe, DecimalPipe, LowerCasePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -21,13 +21,17 @@ import {
   ApexYAxis,
   NgApexchartsModule,
 } from 'ng-apexcharts';
-import { forkJoin } from 'rxjs';
+import { forkJoin, Observable } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
+import { Anomalia } from '../../models/analise.model';
 import { Produto } from '../../models/produto.model';
 import { Previsao } from '../../models/previsao.model';
+import { AnaliseService } from '../../services/analise.service';
+import { IaService } from '../../services/ia.service';
 import { PrevisaoService } from '../../services/previsao.service';
 import { ProdutoService } from '../../services/produto.service';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
+import { MarkdownPipe } from '../../shared/markdown.pipe';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 
 const FONT = 'Plus Jakarta Sans, system-ui, sans-serif';
@@ -39,6 +43,8 @@ const PALETTE = ['#1d3f8f', '#2a52b0', '#3f6fd1', '#f5a623', '#0e9f6e', '#0ea5e9
   imports: [
     DecimalPipe,
     CurrencyPipe,
+    LowerCasePipe,
+    MarkdownPipe,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
@@ -99,6 +105,37 @@ const PALETTE = ['#1d3f8f', '#2a52b0', '#3f6fd1', '#f5a623', '#0e9f6e', '#0ea5e9
             <div class="kpi-sub">recomendados pela IA</div>
           </div>
         </div>
+
+        <!-- Inteligência (IA) sob demanda -->
+        <mat-card class="bloco bloco-ia">
+          <mat-card-header>
+            <mat-card-title><mat-icon class="bloco-icon">auto_awesome</mat-icon> Inteligência (IA)</mat-card-title>
+            <mat-card-subtitle>Resumo executivo e pedido de compra gerados pela DeepSeek</mat-card-subtitle>
+          </mat-card-header>
+          <mat-card-content>
+            <div class="ia-acoes">
+              <button mat-flat-button color="primary" (click)="gerarResumo()" [disabled]="iaCarregando()">
+                <mat-icon>summarize</mat-icon> Resumo executivo
+              </button>
+              <button mat-stroked-button (click)="gerarPedido()" [disabled]="iaCarregando()">
+                <mat-icon>shopping_cart_checkout</mat-icon> Pedido de compra
+              </button>
+            </div>
+
+            @if (iaCarregando()) {
+              <div class="ia-loading"><mat-spinner diameter="22" /> <span>Gerando {{ iaTitulo() | lowercase }}…</span></div>
+            } @else if (iaErro()) {
+              <div class="ia-erro"><mat-icon>error_outline</mat-icon> {{ iaErro() }}</div>
+            } @else if (iaTexto()) {
+              <div class="ia-saida">
+                <div class="ia-saida-titulo">{{ iaTitulo() }}</div>
+                <p class="ia-saida-texto" [innerHTML]="iaTexto() | markdown"></p>
+              </div>
+            } @else {
+              <p class="ia-dica">Clique em uma ação acima para a IA analisar o estoque atual.</p>
+            }
+          </mat-card-content>
+        </mat-card>
 
         <!-- Gráficos -->
         <div class="charts">
@@ -216,7 +253,14 @@ const PALETTE = ['#1d3f8f', '#2a52b0', '#3f6fd1', '#f5a623', '#0e9f6e', '#0ea5e9
               <table mat-table [dataSource]="sugestoes()" class="tabela">
                 <ng-container matColumnDef="produto">
                   <th mat-header-cell *matHeaderCellDef>Produto</th>
-                  <td mat-cell *matCellDef="let p"><strong>{{ p.produtoNome }}</strong></td>
+                  <td mat-cell *matCellDef="let p">
+                    <strong>{{ p.produtoNome }}</strong>
+                    @if (p.tendencia === 'ALTA') {
+                      <span class="tend tend-up" title="Consumo em alta"><mat-icon class="pill-icon">trending_up</mat-icon></span>
+                    } @else if (p.tendencia === 'BAIXA') {
+                      <span class="tend tend-down" title="Consumo em queda"><mat-icon class="pill-icon">trending_down</mat-icon></span>
+                    }
+                  </td>
                 </ng-container>
                 <ng-container matColumnDef="atual">
                   <th mat-header-cell *matHeaderCellDef>Estoque</th>
@@ -241,6 +285,19 @@ const PALETTE = ['#1d3f8f', '#2a52b0', '#3f6fd1', '#f5a623', '#0e9f6e', '#0ea5e9
                     }
                   </td>
                 </ng-container>
+                <ng-container matColumnDef="sugerido">
+                  <th mat-header-cell *matHeaderCellDef>Comprar</th>
+                  <td mat-cell *matCellDef="let p">
+                    @if (p.quantidadeSugerida) {
+                      <span class="pill pill-buy">
+                        <mat-icon class="pill-icon">shopping_cart</mat-icon>
+                        {{ p.quantidadeSugerida }}
+                      </span>
+                    } @else {
+                      —
+                    }
+                  </td>
+                </ng-container>
                 <ng-container matColumnDef="motivo">
                   <th mat-header-cell *matHeaderCellDef>Motivo</th>
                   <td mat-cell *matCellDef="let p" class="motivo">{{ p.motivo }}</td>
@@ -248,6 +305,40 @@ const PALETTE = ['#1d3f8f', '#2a52b0', '#3f6fd1', '#f5a623', '#0e9f6e', '#0ea5e9
                 <tr mat-header-row *matHeaderRowDef="colunas"></tr>
                 <tr mat-row *matRowDef="let row; columns: colunas"></tr>
               </table>
+            }
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Anomalias detectadas -->
+        <mat-card class="bloco">
+          <mat-card-header>
+            <mat-card-title><mat-icon class="bloco-icon">notifications_active</mat-icon> Anomalias de consumo</mat-card-title>
+            <mat-card-subtitle>Picos de saída e estoque parado nos últimos 30 dias</mat-card-subtitle>
+          </mat-card-header>
+          <mat-card-content>
+            @if (anomalias().length === 0) {
+              <app-empty-state
+                icon="task_alt"
+                title="Nada fora do normal"
+                description="Nenhuma anomalia de consumo foi detectada na janela."
+              ></app-empty-state>
+            } @else {
+              <div class="anomalias">
+                @for (a of anomalias(); track a.produtoId + a.tipo) {
+                  <div class="anomalia" [class.anomalia-pico]="a.tipo === 'PICO_SAIDA'">
+                    <div class="anomalia-icon">
+                      <mat-icon>{{ a.tipo === 'PICO_SAIDA' ? 'bolt' : 'pause_circle' }}</mat-icon>
+                    </div>
+                    <div class="anomalia-corpo">
+                      <div class="anomalia-topo">
+                        <strong>{{ a.produtoNome }}</strong>
+                        <span class="tag">{{ a.tipo === 'PICO_SAIDA' ? 'Pico de saída' : 'Estoque parado' }}</span>
+                      </div>
+                      <div class="anomalia-desc">{{ a.descricao }}</div>
+                    </div>
+                  </div>
+                }
+              </div>
             }
           </mat-card-content>
         </mat-card>
@@ -405,13 +496,68 @@ const PALETTE = ['#1d3f8f', '#2a52b0', '#3f6fd1', '#f5a623', '#0e9f6e', '#0ea5e9
       font-size: 0.78rem;
     }
     .pill.urgente { background: var(--c-danger-soft); color: var(--c-danger); }
+    .pill.pill-buy { background: var(--c-success-soft); color: var(--c-success); }
     .pill-icon { font-size: 13px !important; width: 13px !important; height: 13px !important; }
+
+    /* Tendência (chip ao lado do nome) */
+    .tend { display: inline-flex; vertical-align: middle; margin-left: 5px; }
+    .tend mat-icon { font-size: 15px !important; width: 15px !important; height: 15px !important; }
+    .tend-up { color: var(--c-danger); }
+    .tend-down { color: var(--c-success); }
+
+    /* Card de IA */
+    .bloco-ia .ia-acoes { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 0.5rem; }
+    .ia-acoes button mat-icon { margin-right: 0.35rem; }
+    .ia-loading { display: flex; align-items: center; gap: 0.6rem; color: var(--c-text-muted); font-size: 0.88rem; padding: 0.5rem 0; }
+    .ia-erro {
+      display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;
+      padding: 0.6rem 0.8rem; background: var(--c-danger-soft); color: var(--c-danger);
+      border-radius: var(--r-sm); font-size: 0.85rem;
+    }
+    .ia-erro mat-icon { font-size: 18px; width: 18px; height: 18px; }
+    .ia-dica { color: var(--c-text-muted); font-size: 0.85rem; margin: 0.25rem 0 0; }
+    .ia-saida {
+      margin-top: 0.5rem; padding: 0.875rem 1rem;
+      background: var(--c-surface-2); border: 1px solid var(--c-border);
+      border-radius: var(--r-md); border-left: 3px solid var(--c-primary);
+    }
+    .ia-saida-titulo { font-weight: 650; font-size: 0.85rem; color: var(--c-primary); margin-bottom: 0.35rem; }
+    .ia-saida-texto { margin: 0; white-space: pre-wrap; line-height: 1.55; color: var(--c-text); font-size: 0.9rem; }
+    .ia-saida-texto code {
+      background: var(--c-primary-soft); color: var(--c-primary-strong);
+      padding: 1px 5px; border-radius: 5px; font-size: 0.85em;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Anomalias */
+    .anomalias { display: flex; flex-direction: column; gap: 0.625rem; }
+    .anomalia {
+      display: flex; gap: 0.75rem; align-items: flex-start;
+      padding: 0.75rem 0.875rem; border: 1px solid var(--c-border);
+      border-radius: var(--r-md); background: var(--c-surface);
+    }
+    .anomalia-icon {
+      width: 36px; height: 36px; flex-shrink: 0; border-radius: var(--r-md);
+      display: grid; place-items: center;
+      background: var(--c-warning-soft); color: var(--c-warning);
+    }
+    .anomalia-pico .anomalia-icon { background: var(--c-danger-soft); color: var(--c-danger); }
+    .anomalia-icon mat-icon { font-size: 20px; width: 20px; height: 20px; }
+    .anomalia-corpo { flex: 1; }
+    .anomalia-topo { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    .tag {
+      font-size: 0.7rem; font-weight: 600; padding: 2px 8px; border-radius: 999px;
+      background: var(--c-surface-2); color: var(--c-text-muted); border: 1px solid var(--c-border);
+    }
+    .anomalia-desc { font-size: 0.83rem; color: var(--c-text-muted); margin-top: 2px; }
   `,
 })
 export class DashboardPage {
   protected auth = inject(AuthService);
   private previsaoService = inject(PrevisaoService);
   private produtoService = inject(ProdutoService);
+  private analiseService = inject(AnaliseService);
+  private ia = inject(IaService);
 
   private readonly brl = new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -429,9 +575,42 @@ export class DashboardPage {
   readonly sugestoes = signal<Previsao[]>([]);
   readonly baixoEstoque = signal<Produto[]>([]);
   readonly produtos = signal<Produto[]>([]);
+  readonly anomalias = signal<Anomalia[]>([]);
 
-  readonly colunas = ['produto', 'atual', 'consumo', 'ruptura', 'motivo'];
+  // Inteligência (IA) sob demanda
+  readonly iaTitulo = signal<string>('');
+  readonly iaTexto = signal<string | null>(null);
+  readonly iaCarregando = signal(false);
+  readonly iaErro = signal<string | null>(null);
+
+  readonly colunas = ['produto', 'atual', 'consumo', 'ruptura', 'sugerido', 'motivo'];
   readonly colunasBaixo = ['codigo', 'nome', 'qtd', 'min'];
+
+  gerarResumo(): void {
+    this.executarIa('Resumo executivo', this.ia.resumo());
+  }
+
+  gerarPedido(): void {
+    this.executarIa('Pedido de compra', this.ia.pedidoCompra());
+  }
+
+  private executarIa(titulo: string, obs: Observable<{ resposta: string }>): void {
+    if (this.iaCarregando()) return;
+    this.iaTitulo.set(titulo);
+    this.iaTexto.set(null);
+    this.iaErro.set(null);
+    this.iaCarregando.set(true);
+    obs.subscribe({
+      next: (r) => {
+        this.iaTexto.set(r.resposta);
+        this.iaCarregando.set(false);
+      },
+      error: (err) => {
+        this.iaCarregando.set(false);
+        this.iaErro.set(err?.error?.message ?? 'Não consegui falar com a IA. Verifique a chave da DeepSeek.');
+      },
+    });
+  }
 
   readonly totalAtivos = computed(() => this.produtos().filter((p) => p.ativo).length);
   readonly stockValue = computed(() =>
@@ -622,11 +801,13 @@ export class DashboardPage {
       sugestoes: this.previsaoService.reposicaoSugerida(),
       baixoEstoque: this.produtoService.baixoEstoque(),
       produtos: this.produtoService.listar({ size: 500 }),
+      anomalias: this.analiseService.anomalias(),
     }).subscribe({
-      next: ({ sugestoes, baixoEstoque, produtos }) => {
+      next: ({ sugestoes, baixoEstoque, produtos, anomalias }) => {
         this.sugestoes.set(sugestoes);
         this.baixoEstoque.set(baixoEstoque);
         this.produtos.set(produtos.content);
+        this.anomalias.set(anomalias);
         this.loading.set(false);
       },
       error: () => this.loading.set(false),

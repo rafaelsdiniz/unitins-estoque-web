@@ -10,16 +10,18 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { ChatMessage } from '../../models/ia.model';
 import { IaService } from '../../services/ia.service';
+import { MarkdownPipe } from '../markdown.pipe';
 
 /**
  * Chat de IA flutuante (canto inferior direito), presente em todas as páginas
  * autenticadas via main-layout. O histórico vive só na sessão (signal); o
- * backend é stateless. Veja IaService -> POST /ia/chat.
+ * backend é stateless. Usa o AGENTE (IaService -> POST /ia/agente), que pode
+ * consultar produtos, previsão, resumo, curva ABC, anomalias e histórico.
  */
 @Component({
   selector: 'app-chat-widget',
   standalone: true,
-  imports: [ReactiveFormsModule, MatIconModule],
+  imports: [ReactiveFormsModule, MatIconModule, MarkdownPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="widget">
@@ -30,7 +32,7 @@ import { IaService } from '../../services/ia.service';
               <div class="head-avatar"><mat-icon>smart_toy</mat-icon></div>
               <div>
                 <div class="head-titulo">Assistente IA</div>
-                <div class="head-sub">Dúvidas e estoque</div>
+                <div class="head-sub">Agente do estoque</div>
               </div>
             </div>
             <div class="head-acoes">
@@ -63,7 +65,11 @@ import { IaService } from '../../services/ia.service';
                 @if (m.papel === 'assistant') {
                   <div class="bot-avatar"><mat-icon>smart_toy</mat-icon></div>
                 }
-                <div class="bolha" [class.bolha-user]="m.papel === 'user'">{{ m.conteudo }}</div>
+                @if (m.papel === 'assistant') {
+                  <div class="bolha" [innerHTML]="m.conteudo | markdown"></div>
+                } @else {
+                  <div class="bolha bolha-user">{{ m.conteudo }}</div>
+                }
               </div>
             }
 
@@ -227,6 +233,13 @@ import { IaService } from '../../services/ia.service';
       background: var(--c-primary); border-color: var(--c-primary); color: #fff;
       border-radius: var(--r-md); border-bottom-right-radius: 4px;
     }
+    .bolha :first-child { margin-top: 0; }
+    .bolha :last-child { margin-bottom: 0; }
+    .bolha code {
+      background: var(--c-primary-soft); color: var(--c-primary-strong);
+      padding: 1px 5px; border-radius: 5px; font-size: 0.8em;
+      font-family: 'JetBrains Mono', monospace;
+    }
 
     /* Digitando */
     .digitando { display: flex; gap: 4px; align-items: center; }
@@ -294,9 +307,10 @@ export class ChatWidgetComponent {
   private readonly scrollArea = viewChild<ElementRef<HTMLElement>>('scrollArea');
 
   readonly sugestoes = [
-    'Quais produtos preciso repor?',
-    'Qual produto vai acabar primeiro?',
-    'Como registro uma movimentação?',
+    'Faça um resumo do meu estoque',
+    'Quais produtos preciso repor e quanto comprar?',
+    'Tem alguma anomalia de consumo?',
+    'Quanto tenho do produto Mouse?',
   ];
 
   onEnter(event: Event): void {
@@ -321,7 +335,7 @@ export class ChatWidgetComponent {
     this.carregando.set(true);
     this.scrollToBottom();
 
-    this.ia.chat(this.mensagens()).subscribe({
+    this.ia.agente(this.mensagens()).subscribe({
       next: (res) => {
         this.mensagens.update((m) => [...m, { papel: 'assistant', conteudo: res.resposta }]);
         this.carregando.set(false);
